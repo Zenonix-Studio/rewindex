@@ -1,6 +1,7 @@
-# codex-rewind — git-free /undo for Codex CLI
+# rewindex — git-free /undo for Codex CLI
 
-> Working name. Candidates: `codex-rewind`, `codex-undo`, `timewarp`.
+> Name decided: **rewindex** (npm name verified free, GitHub clear). Package +
+> binary name is `rewindex`. The repo directory stays `codex-rewind`.
 
 ## One-liner
 OpenAI removed `/undo` from Codex CLI. This brings file-level rewind back:
@@ -17,13 +18,13 @@ with one command. Never touches the project's own git history.
 ## How it works
 1. Codex hooks (shipped 2026, config.toml / plugin hooks.json): a PreToolUse-class
    hook fires before file-mutating tools → snapshot changed files into a shadow
-   git repo (`~/.codex-rewind/<project-hash>/`), tagged with session id + turn.
+   git repo (`~/.rewindex/<project-hash>/`), tagged with session id + turn.
    Same design Gemini CLI uses natively (shadow-git checkpointing + /restore).
-2. `codex-rewind` CLI/TUI: list snapshots (grouped by session/turn, with the
+2. `rewindex` CLI/TUI: list snapshots (grouped by session/turn, with the
    prompt text from the session JSONL as label), diff, restore selected snapshot
    to working tree. Optionally print the `codex resume` command to fork the
    conversation from that point.
-3. Install: `npx codex-rewind install` → writes hook config, done.
+3. Install: `npx rewindex install` → writes hook config, done.
 
 ## v1 scope
 - Snapshot on file-mutating hook events (apply_patch + shell edits if interceptable).
