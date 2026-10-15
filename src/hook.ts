@@ -74,7 +74,11 @@ export async function hookCommand(): Promise<number> {
     const config = loadConfig();
     const git = new ShadowGit(store, config);
     const { label, meta } = labelFor(payload);
-    const sha = await git.snapshot(buildMessage(label, meta));
+    const sha = await git.snapshot(
+      buildMessage(label, meta),
+      undefined,
+      meta.event === "UserPromptSubmit",
+    );
     if (sha) {
       process.stderr.write(`rewindex: snapshot ${sha.slice(0, 10)} (${meta.event})\n`);
     }

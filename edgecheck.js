@@ -36,9 +36,9 @@ const snap = (proj, turn, prompt) => {
   const list = cli(["list"], proj);
   assert.strictEqual(list.status, 0, `list in non-git dir: ${list.stderr}`);
   assert.ok(!fs.existsSync(path.join(proj, ".git")), "rewindex must not create .git in the project");
-  const ids = [...list.stdout.matchAll(/\b([0-9a-f]{7,40})\b/g)].map(m => m[1]);
-  assert.ok(ids.length >= 1, `snapshot id found in: ${list.stdout}`);
-  const restore = cli(["restore", ids[ids.length - 1], "-y"], proj);
+  const id = list.stdout.match(/^1\. ([0-9a-f]{10}) /m)?.[1];
+  assert.ok(id, `snapshot id found in: ${list.stdout}`);
+  const restore = cli(["restore", id, "-y"], proj);
   assert.strictEqual(restore.status, 0, `restore in non-git dir: ${restore.stderr} ${restore.stdout}`);
   assert.strictEqual(fs.readFileSync(path.join(proj, "notes.md"), "utf8"), "v1\n");
   ok("non-git dir: snapshot, list, restore work; no .git created in project");
@@ -51,11 +51,11 @@ const snap = (proj, turn, prompt) => {
   fs.writeFileSync(path.join(proj, "small.txt"), "keep me\n");
   fs.writeFileSync(path.join(proj, "huge.bin"), Buffer.alloc(17 * 1024 * 1024, 7));
   snap(proj, "turn-1", "big file turn");
+  fs.writeFileSync(path.join(proj, "small.txt"), "RUINED\n");
   const list = cli(["list"], proj);
   assert.strictEqual(list.status, 0, "list after big-file snapshot");
-  fs.writeFileSync(path.join(proj, "small.txt"), "RUINED\n");
-  const ids = [...list.stdout.matchAll(/\b([0-9a-f]{7,40})\b/g)].map(m => m[1]);
-  const restore = cli(["restore", ids[ids.length - 1], "-y"], proj);
+  const id = list.stdout.match(/^1\. ([0-9a-f]{10}) /m)?.[1];
+  const restore = cli(["restore", id, "-y"], proj);
   assert.strictEqual(restore.status, 0, `restore: ${restore.stderr}`);
   assert.strictEqual(fs.readFileSync(path.join(proj, "small.txt"), "utf8"), "keep me\n");
   ok(">16MB file skipped without failing the snapshot; small file restored");
@@ -77,12 +77,12 @@ const snap = (proj, turn, prompt) => {
   fs.writeFileSync(path.join(proj, "node_modules", "pkg", "index.js"), "x".repeat(1000));
   fs.writeFileSync(path.join(proj, "app.js"), "v1\n");
   snap(proj, "turn-1", "exclude check");
+  fs.writeFileSync(path.join(proj, "app.js"), "RUINED\n");
   const list = cli(["list"], proj);
   assert.strictEqual(list.status, 0);
   // restore and confirm node_modules content untouched even after deletion from snapshot store
-  fs.writeFileSync(path.join(proj, "app.js"), "RUINED\n");
-  const ids = [...list.stdout.matchAll(/\b([0-9a-f]{7,40})\b/g)].map(m => m[1]);
-  const restore = cli(["restore", ids[ids.length - 1], "-y"], proj);
+  const id = list.stdout.match(/^1\. ([0-9a-f]{10}) /m)?.[1];
+  const restore = cli(["restore", id, "-y"], proj);
   assert.strictEqual(restore.status, 0, restore.stderr);
   assert.strictEqual(fs.readFileSync(path.join(proj, "app.js"), "utf8"), "v1\n");
   ok("node_modules excluded; app file restored");
@@ -97,7 +97,7 @@ const snap = (proj, turn, prompt) => {
   snap(proj, "turn-1", "unicode filename check");
   fs.writeFileSync(path.join(proj, file), "RUINED\n");
   const list = cli(["list"], proj);
-  const id = list.stdout.match(/^\s{2}([0-9a-f]{10})\s/m)?.[1];
+  const id = list.stdout.match(/^1\. ([0-9a-f]{10}) /m)?.[1];
   assert.ok(id, `snapshot id found in: ${list.stdout}`);
   const diff = cli(["diff", id], proj);
   assert.match(diff.stdout, /RUINED/, `diff must include Unicode-named file: ${diff.stdout}`);

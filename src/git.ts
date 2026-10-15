@@ -10,6 +10,11 @@ export interface GitResult {
   code: number;
 }
 
+export interface GitChange {
+  status: string;
+  path: string;
+}
+
 /**
  * Thin wrapper over the system `git`, run against an ISOLATED shadow repo:
  *  - GIT_DIR points at our per-project store, GIT_WORK_TREE at the project root,
@@ -179,10 +184,14 @@ export class ShadowGit {
 
   /**
    * Stage the current worktree (honoring excludes + size cap, force-adding so
-   * gitignored files are included) and commit. Returns the new commit sha, or
-   * null if nothing changed since the last snapshot.
+   * gitignored files are included) and commit. Returns null when nothing
+   * changed unless forceCommit is set for a metadata-only prompt boundary.
    */
-  async snapshot(message: string, authorDateISO?: string): Promise<string | null> {
+  async snapshot(
+    message: string,
+    authorDateISO?: string,
+    forceCommit = false,
+  ): Promise<string | null> {
     await this.ensureInit();
     const oversized = this.config.captureIgnored ? this.findOversized() : [];
     // Clear the index first so deletions are captured too.
@@ -196,7 +205,7 @@ export class ShadowGit {
     }
     // Did anything actually change vs HEAD?
     const diff = await this.run(["diff", "--cached", "--quiet", "HEAD"]);
-    if (diff.code === 0) {
+    if (diff.code === 0 && !forceCommit) {
       return null; // no change
     }
     const extraEnv: Record<string, string> = {};
@@ -212,9 +221,34 @@ export class ShadowGit {
     return (await this.runOk(["rev-parse", ref])).trim();
   }
 
-  async filesInCommit(ref: string): Promise<string[]> {
-    const out = await this.runOk(["ls-tree", "-rz", "--name-only", ref]);
-    return out.split("\0").filter(Boolean);
+  async changesSince(ref: string): Promise<GitChange[]> {
+    const out = await this.runOk([
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      ref,
+      "--",
+    ]);
+    const fields = out.split("\0").filter(Boolean);
+    const changes: GitChange[] = [];
+    for (let i = 0; i < fields.length; i += 2) {
+      changes.push({ status: fields[i], path: fields[i + 1] });
+    }
+    return changes;
+  }
+
+  async deletePaths(paths: string[]): Promise<void> {
+    const root = path.resolve(this.store.projectRoot) + path.sep;
+    for (const file of paths) {
+      const absolute = path.resolve(this.store.projectRoot, file);
+      if (!absolute.startsWith(root)) throw new Error(`unsafe snapshot path: ${file}`);
+      try {
+        await fs.promises.unlink(absolute);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+      }
+    }
   }
 
   /** Restore the given paths from a commit into the worktree. */

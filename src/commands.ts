@@ -5,7 +5,8 @@ import { ShadowGit } from "./git";
 import {
   buildMessage,
   Checkpoint,
-  listCheckpoints,
+  listPromptCheckpoints,
+  PromptCheckpoint,
   resolveCheckpoint,
 } from "./snapshot";
 import { readState, writeState } from "./state";
@@ -18,37 +19,41 @@ function git(projectRoot: string): ShadowGit {
 function relativeTime(ms: number): string {
   const diff = Date.now() - ms;
   const s = Math.round(diff / 1000);
-  if (s < 60) return `${s}s ago`;
+  if (s < 60) return `${s} sn önce`;
   const m = Math.round(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return `${m} dk önce`;
   const h = Math.round(m / 60);
-  if (h < 48) return `${h}h ago`;
-  return `${Math.round(h / 24)}d ago`;
+  if (h < 48) return `${h} sa önce`;
+  return `${Math.round(h / 24)} gün önce`;
 }
 
 export async function listCommand(projectRoot: string): Promise<number> {
   const g = git(projectRoot);
-  const checkpoints = await listCheckpoints(g);
+  const checkpoints = await listPromptCheckpoints(g);
   if (checkpoints.length === 0) {
-    console.log("No snapshots yet. Run `rewindex install` and let Codex edit files.");
+    console.log("Henüz geri alınabilecek bir prompt değişikliği yok.");
     return 0;
   }
-  // Group by turn so a turn's multiple tool calls read as one unit.
-  let lastTurn: string | undefined = "\u0000";
-  for (const c of checkpoints) {
-    const turn = c.meta.turnId;
-    if (turn !== lastTurn) {
-      const promptLabel = c.meta.prompt ? ` "${truncate(c.meta.prompt, 60)}"` : "";
-      console.log(
-        `\nturn ${turn ? turn.slice(0, 8) : "(none)"}${promptLabel}`,
-      );
-      lastTurn = turn;
-    }
-    const when = `${relativeTime(c.unixTime)}`;
-    const files = `${c.filesChanged} file${c.filesChanged === 1 ? "" : "s"}`;
-    console.log(`  ${c.id}  ${when.padEnd(8)}  ${files.padEnd(9)}  ${truncate(c.label, 50)}`);
+  console.log("Son 50 değişiklik\n");
+  for (const [index, checkpoint] of checkpoints.entries()) {
+    const title = truncate(checkpoint.meta.prompt || checkpoint.label, 48);
+    const line = `${index + 1}. ${checkpoint.id} · ${checkpoint.filesChanged} dosya · ${title}`;
+    console.log(`${line.padEnd(78)} ${relativeTime(checkpoint.unixTime)}`);
+    console.log(`   Özet: ${summary(checkpoint)}`);
+    if (index + 1 < checkpoints.length) console.log("");
   }
   return 0;
+}
+
+function summary(checkpoint: PromptCheckpoint): string {
+  const removed = checkpoint.changes.filter((change) => change.status === "A").length;
+  const recreated = checkpoint.changes.filter((change) => change.status === "D").length;
+  const restored = checkpoint.changes.length - removed - recreated;
+  const parts: string[] = [];
+  if (removed) parts.push(`${removed} dosya silinir`);
+  if (restored) parts.push(`${restored} dosya geri alınır`);
+  if (recreated) parts.push(`${recreated} dosya yeniden oluşturulur`);
+  return `${parts.join(", ")}.`;
 }
 
 function truncate(s: string, n: number): string {
@@ -62,10 +67,7 @@ export async function diffCommand(projectRoot: string, id: string): Promise<numb
     console.error(`No snapshot matching "${id}". Try \`rewindex list\`.`);
     return 1;
   }
-  // Diff from the snapshot to the current worktree, limited to files the
-  // snapshot knows — i.e. exactly what `restore` would change.
-  const files = await g.filesInCommit(c.fullId);
-  const r = await g.run(["diff", c.fullId, "--", ...files]);
+  const r = await g.run(["diff", c.fullId, "--"]);
   if (!r.stdout.trim()) {
     console.log(`Snapshot ${c.id} matches the working tree for its files (nothing to restore).`);
     return 0;
@@ -116,25 +118,8 @@ export async function restoreCommand(
   }
 
   const targetRef = typeof target === "string" ? target : target.fullId;
-  const files = await g.filesInCommit(targetRef);
-  if (files.length === 0) {
-    console.error("That snapshot has no files to restore.");
-    return 1;
-  }
-
-  // Preview: show which files change, and flag conflicts (files modified since
-  // the snapshot — those local edits would be overwritten).
-  const changed: string[] = [];
-  const conflicts: string[] = [];
-  for (const f of files) {
-    const r = await g.run(["diff", "--quiet", targetRef, "--", f]);
-    if (r.code !== 0) {
-      changed.push(f);
-      // "conflict" = the working file currently differs from the snapshot AND
-      // also differs from the most recent snapshot (an edit rewindex didn't make).
-      conflicts.push(f);
-    }
-  }
+  const changes = await g.changesSince(targetRef);
+  const changed = changes.map((change) => change.path);
 
   if (changed.length === 0) {
     console.log("Working tree already matches that snapshot. Nothing to do.");
@@ -143,11 +128,11 @@ export async function restoreCommand(
 
   const label = typeof target === "string" ? "safety snapshot" : target.label;
   console.log(`Restore ${typeof target === "string" ? target.slice(0, 10) : target.id}  "${label}"`);
-  console.log(`This will overwrite ${changed.length} file(s) in ${projectRoot}:`);
+  console.log(`This will change ${changed.length} file(s) in ${projectRoot}:`);
   for (const f of changed) console.log(`  ~ ${f}`);
-  if (conflicts.length > 0) {
+  if (changed.length > 0) {
     console.log(
-      `\n  note: ${conflicts.length} file(s) have local changes since the snapshot; ` +
+      `\n  note: ${changed.length} file(s) differ from the snapshot; ` +
         `those edits will be replaced. A safety snapshot is taken first — ` +
         `run \`rewindex restore --undo\` to get them back.`,
     );
@@ -162,19 +147,23 @@ export async function restoreCommand(
   }
 
   // Safety snapshot of the CURRENT state so the restore is reversible.
-  const safety = await g.snapshot(
+  const safety = (await g.snapshot(
     buildMessage("pre-restore safety snapshot", { event: "pre-restore" }),
-  );
-  if (safety) {
-    writeState(store, {
-      lastSafetySnapshot: safety,
-      lastRestoredTo: targetRef,
-    });
-  }
+  )) ?? await g.revParse("HEAD");
+  writeState(store, {
+    lastSafetySnapshot: safety,
+    lastRestoredTo: targetRef,
+  });
 
-  await g.checkoutPaths(targetRef, changed);
+  await g.deletePaths(
+    changes.filter((change) => change.status === "A").map((change) => change.path),
+  );
+  await g.checkoutPaths(
+    targetRef,
+    changes.filter((change) => change.status !== "A").map((change) => change.path),
+  );
   console.log(`\nRestored ${changed.length} file(s).`);
-  if (!opts.undo && safety) {
+  if (!opts.undo) {
     console.log(`Undo with: rewindex restore --undo`);
   }
   console.log(

@@ -89,7 +89,7 @@ function projectGitHead() {
   fs.writeFileSync(path.join(proj, "secret.env"), "API_KEY=edited\n");
 
   // 3) PreToolUse -> snapshot B (the good state we want to return to)
-  hook({
+  const preTool = hook({
     hook_event_name: "PreToolUse",
     session_id: "sess-1",
     turn_id: "turn-1",
@@ -99,6 +99,8 @@ function projectGitHead() {
     tool_input: { command: "*** Begin Patch ..." },
     permission_mode: "auto",
   });
+  const snapshotB = preTool.stderr.match(/snapshot ([0-9a-f]{10})/)?.[1];
+  assert.ok(snapshotB, `PreToolUse snapshot id found in: ${preTool.stderr}`);
   ok("PreToolUse hook took snapshot B of the good state");
 
   const goodGreeting = fs.readFileSync(path.join(proj, "greeting.js"), "utf8");
@@ -113,15 +115,9 @@ function projectGitHead() {
   // 5) list shows snapshots
   const list = cli(["list", "-C", proj]);
   assert.strictEqual(list.status, 0, "list exits 0");
-  assert.ok(/turn turn-1/.test(list.stdout), "list groups by turn-1");
-  assert.ok(/greeting|existing|file/.test(list.stdout), "list shows file counts");
-  ok("list shows snapshots grouped by turn with the prompt label");
-
-  // Find snapshot B's id = the latest PreToolUse snapshot. Use `latest`.
-  // (Newest snapshot is B's successor? No: B is the newest real snapshot here.)
-  const ids = [...list.stdout.matchAll(/^\s{2}([0-9a-f]{10})\s/gm)].map((m) => m[1]);
-  assert.ok(ids.length >= 2, `expected >=2 snapshots, got ${ids.length}`);
-  const snapshotB = ids[0]; // newest first
+  assert.ok(/^1\. [0-9a-f]{10} · \d+ dosya ·/m.test(list.stdout), "list numbers prompt history");
+  assert.ok(/add a greeting module/.test(list.stdout), "list shows the prompt title");
+  ok("list shows numbered prompt history with file counts");
 
   // 6) diff should show the corruption vs snapshot B
   const diff = cli(["diff", snapshotB, "-C", proj]);

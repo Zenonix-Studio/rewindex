@@ -1,4 +1,4 @@
-import { ShadowGit } from "./git";
+import { GitChange, ShadowGit } from "./git";
 
 /**
  * Snapshot metadata is encoded as trailers in the commit message so the git
@@ -21,6 +21,10 @@ export interface Checkpoint {
   label: string;
   meta: SnapshotMeta;
   filesChanged: number;
+}
+
+export interface PromptCheckpoint extends Checkpoint {
+  changes: GitChange[];
 }
 
 const TRAILER_KEYS: Record<string, keyof SnapshotMeta> = {
@@ -98,6 +102,25 @@ export async function listCheckpoints(git: ShadowGit): Promise<Checkpoint[]> {
   return checkpoints;
 }
 
+export async function listPromptCheckpoints(
+  git: ShadowGit,
+  limit = 50,
+): Promise<PromptCheckpoint[]> {
+  const checkpoints = await listCheckpoints(git);
+  const prompts: PromptCheckpoint[] = [];
+  for (const checkpoint of checkpoints) {
+    const prompt = checkpoint.meta.prompt?.trim();
+    if (checkpoint.meta.event !== "UserPromptSubmit" || !prompt || prompt.startsWith("$rewindex")) {
+      continue;
+    }
+    const changes = await git.changesSince(checkpoint.fullId);
+    if (changes.length === 0) continue;
+    prompts.push({ ...checkpoint, filesChanged: changes.length, changes });
+    if (prompts.length === limit) break;
+  }
+  return prompts;
+}
+
 async function countFilesChanged(git: ShadowGit, fullId: string): Promise<number> {
   const r = await git.run(["diff", "--name-only", `${fullId}~1`, fullId]);
   if (r.code !== 0) return 0;
@@ -111,7 +134,13 @@ export async function resolveCheckpoint(
 ): Promise<Checkpoint | null> {
   const all = await listCheckpoints(git);
   if (all.length === 0) return null;
-  if (id === "latest" || id === "last") return all[0];
+  const numbered = /^\d+$/.test(id) ? Number(id) : 0;
+  if (numbered >= 1 && numbered <= 50) {
+    return (await listPromptCheckpoints(git))[numbered - 1] ?? null;
+  }
+  if (id === "latest" || id === "last") {
+    return (await listPromptCheckpoints(git))[0] ?? null;
+  }
   const matches = all.filter((c) => c.fullId.startsWith(id) || c.id === id);
   return matches[0] ?? null;
 }
