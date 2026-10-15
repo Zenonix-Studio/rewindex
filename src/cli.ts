@@ -17,16 +17,16 @@ Usage:
   rewindex install            Add snapshot hooks and the $rewindex Codex skill
   rewindex uninstall          Remove rewindex hooks and skill (leaves yours alone)
   rewindex list               List snapshots (grouped by turn, with prompt + files changed)
-  rewindex diff <id>          Show what restoring <id> would change
-  rewindex restore <id>       Restore files from snapshot <id> (preview + confirm)
+  rewindex diff <number|id>   Show what restoring that prompt would change
+  rewindex restore <number|id> Restore that prompt baseline (preview + confirm)
   rewindex restore --undo     Undo the last restore (via its safety snapshot)
   rewindex gc                 Prune old snapshots (default: 7 days / 500 MB)
   rewindex hook               (internal) read a hook payload on stdin and snapshot
 
 Inside Codex after install:
   $rewindex list
-  $rewindex diff <id>
-  $rewindex restore <id>
+  $rewindex diff <number|id>
+  $rewindex restore <number|id>
   $rewindex undo
 
 Options:

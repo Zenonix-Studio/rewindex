@@ -94,6 +94,18 @@ try {
   assert.strictEqual(fs.readFileSync(path.join(project, "b.txt"), "utf8"), "B\n");
   ok("restore --undo recovers the complete pre-restore state");
 
+  const directProject = path.join(tmpRoot, "direct-project");
+  fs.mkdirSync(directProject);
+  fs.writeFileSync(path.join(directProject, "base.txt"), "base\n");
+  hook(directProject, "Yeni dosya oluştur", "turn-direct");
+  fs.writeFileSync(path.join(directProject, "later.txt"), "later\n");
+  const directList = cli(directProject, "list");
+  assert.match(directList.stdout, /^1\. [0-9a-f]{10} · 1 dosya · Yeni dosya oluştur/m);
+  const directRestore = cli(directProject, "restore", "1", "-y");
+  assert.strictEqual(directRestore.status, 0, directRestore.stderr);
+  assert.ok(!fs.existsSync(path.join(directProject, "later.txt")));
+  ok("direct CLI commands capture untracked files before listing and restoring");
+
   const cappedProject = path.join(tmpRoot, "capped-project");
   fs.mkdirSync(cappedProject);
   const counter = path.join(cappedProject, "counter.txt");

@@ -111,11 +111,11 @@ ${SKILL_MARKER}
 Interpret the text after \`$rewindex\` as exactly one command:
 
 - \`$rewindex list\`: run \`${cli} list -C "$PWD"\`.
-- \`$rewindex diff <id>\`: validate the ID, then run \`${cli} diff "<id>" -C "$PWD"\`.
-- \`$rewindex restore <id>\`: validate the ID, run the diff command first, show its output, and ask for explicit confirmation. Only after the user confirms, run \`${cli} restore "<id>" -y -C "$PWD"\`.
+- \`$rewindex diff <number|id>\`: validate the selector, then run \`${cli} diff "<number|id>" -C "$PWD"\`.
+- \`$rewindex restore <number|id>\`: validate the selector, run the diff command first, show its output, and ask for explicit confirmation. Only after the user confirms, run \`${cli} restore "<number|id>" -y -C "$PWD"\`.
 - \`$rewindex undo\`: ask for explicit confirmation. Only after the user confirms, run \`${cli} restore --undo -y -C "$PWD"\`.
 
-An ID is valid only when it is hexadecimal or exactly \`latest\` or \`last\`. Never pass other user input to the shell, infer an ID, or add user-supplied flags. For missing or unsupported arguments, show the four forms above and make no changes.
+A selector is valid only when it is a decimal number from \`1\` through \`50\`, hexadecimal, or exactly \`latest\` or \`last\`. Never pass other user input to the shell, infer a selector, or add user-supplied flags. For missing or unsupported arguments, show the four forms above and make no changes.
 `;
 }
 
