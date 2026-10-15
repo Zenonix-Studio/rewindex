@@ -157,6 +157,7 @@ export function installCommand(): number {
   writeHooksFile(data);
   console.log(`Installed rewindex hooks into ${hooksJsonPath()} (${added} events).`);
   console.log(`Installed Codex skill: ${skillFilePath()}`);
+  console.log("Use it in a new Codex session: $rewindex list");
   console.log("");
   printTrustNote();
   return 0;

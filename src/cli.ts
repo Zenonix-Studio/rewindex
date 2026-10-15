@@ -14,14 +14,20 @@ function usage(): void {
   console.log(`rewindex ${VERSION} — git-free /undo for OpenAI Codex CLI
 
 Usage:
-  rewindex install            Add snapshot hooks to ~/.codex/hooks.json (then /hooks to trust)
-  rewindex uninstall          Remove rewindex hooks (leaves your other hooks alone)
+  rewindex install            Add snapshot hooks and the $rewindex Codex skill
+  rewindex uninstall          Remove rewindex hooks and skill (leaves yours alone)
   rewindex list               List snapshots (grouped by turn, with prompt + files changed)
   rewindex diff <id>          Show what restoring <id> would change
   rewindex restore <id>       Restore files from snapshot <id> (preview + confirm)
   rewindex restore --undo     Undo the last restore (via its safety snapshot)
   rewindex gc                 Prune old snapshots (default: 7 days / 500 MB)
   rewindex hook               (internal) read a hook payload on stdin and snapshot
+
+Inside Codex after install:
+  $rewindex list
+  $rewindex diff <id>
+  $rewindex restore <id>
+  $rewindex undo
 
 Options:
   -y, --yes                   Skip the restore confirmation prompt
