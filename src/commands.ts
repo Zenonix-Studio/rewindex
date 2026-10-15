@@ -29,7 +29,6 @@ function relativeTime(ms: number): string {
 
 export async function listCommand(projectRoot: string): Promise<number> {
   const g = git(projectRoot);
-  await g.snapshot(buildMessage("before rewindex list", { event: "manual" }));
   const checkpoints = await listPromptCheckpoints(g);
   if (checkpoints.length === 0) {
     console.log("Henüz geri alınabilecek bir prompt değişikliği yok.");
@@ -63,7 +62,6 @@ function truncate(s: string, n: number): string {
 
 export async function diffCommand(projectRoot: string, id: string): Promise<number> {
   const g = git(projectRoot);
-  await g.snapshot(buildMessage("before rewindex diff", { event: "manual" }));
   const c = await resolveCheckpoint(g, id);
   if (!c) {
     console.error(`No snapshot matching "${id}". Try \`rewindex list\`.`);

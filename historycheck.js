@@ -2,6 +2,7 @@
 "use strict";
 
 const assert = require("assert");
+const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -99,12 +100,21 @@ try {
   fs.writeFileSync(path.join(directProject, "base.txt"), "base\n");
   hook(directProject, "Yeni dosya oluştur", "turn-direct");
   fs.writeFileSync(path.join(directProject, "later.txt"), "later\n");
+  hook(directProject, "$rewindex list", "turn-direct-list");
+  const directStore = path.join(
+    home,
+    crypto.createHash("sha256").update(fs.realpathSync(directProject)).digest("hex").slice(0, 16),
+    "git",
+  );
+  fs.chmodSync(directStore, 0o555);
   const directList = cli(directProject, "list");
+  fs.chmodSync(directStore, 0o755);
+  assert.strictEqual(directList.status, 0, directList.stderr);
   assert.match(directList.stdout, /^1\. [0-9a-f]{10} · 1 dosya · Yeni dosya oluştur/m);
   const directRestore = cli(directProject, "restore", "1", "-y");
   assert.strictEqual(directRestore.status, 0, directRestore.stderr);
   assert.ok(!fs.existsSync(path.join(directProject, "later.txt")));
-  ok("direct CLI commands capture untracked files before listing and restoring");
+  ok("list remains read-only after the prompt hook captures the current state");
 
   const cappedProject = path.join(tmpRoot, "capped-project");
   fs.mkdirSync(cappedProject);
