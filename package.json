@@ -27,7 +27,8 @@
     "build": "tsc -p tsconfig.json",
     "selfcheck": "node selfcheck.js",
     "prepublishOnly": "npm run build",
-    "edgecheck": "node edgecheck.js"
+    "edgecheck": "node edgecheck.js",
+    "installcheck": "node installcheck.js"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
