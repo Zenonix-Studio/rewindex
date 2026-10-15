@@ -213,8 +213,8 @@ export class ShadowGit {
   }
 
   async filesInCommit(ref: string): Promise<string[]> {
-    const out = await this.runOk(["ls-tree", "-r", "--name-only", ref]);
-    return out.split("\n").map((s) => s.trim()).filter(Boolean);
+    const out = await this.runOk(["ls-tree", "-rz", "--name-only", ref]);
+    return out.split("\0").filter(Boolean);
   }
 
   /** Restore the given paths from a commit into the worktree. */

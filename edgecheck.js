@@ -88,4 +88,23 @@ const snap = (proj, turn, prompt) => {
   ok("node_modules excluded; app file restored");
 }
 
+// ---- 5. Non-ASCII filenames must survive Git's path output unchanged
+{
+  const proj = path.join(tmpRoot, "unicode");
+  const file = "Mülakat Notları.md";
+  fs.mkdirSync(proj);
+  fs.writeFileSync(path.join(proj, file), "v1\n");
+  snap(proj, "turn-1", "unicode filename check");
+  fs.writeFileSync(path.join(proj, file), "RUINED\n");
+  const list = cli(["list"], proj);
+  const id = list.stdout.match(/^\s{2}([0-9a-f]{10})\s/m)?.[1];
+  assert.ok(id, `snapshot id found in: ${list.stdout}`);
+  const diff = cli(["diff", id], proj);
+  assert.match(diff.stdout, /RUINED/, `diff must include Unicode-named file: ${diff.stdout}`);
+  const restore = cli(["restore", id, "-y"], proj);
+  assert.strictEqual(restore.status, 0, restore.stderr);
+  assert.strictEqual(fs.readFileSync(path.join(proj, file), "utf8"), "v1\n");
+  ok("non-ASCII filename: diff and restore use the real path");
+}
+
 console.log(`EDGE-CHECK PASSED (${passed} scenarios)`);
