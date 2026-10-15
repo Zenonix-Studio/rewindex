@@ -2,9 +2,10 @@
 
 ## Phase 0 — validation (do BEFORE writing product code)
 - [ ] 1. Re-verify competition is still zero: GitHub search (codex undo / checkpoint / rewind / snapshot / shadow git), npm, Show HN. Also re-check #9203/#11626 are still open and no OpenAI roadmap signal in recent release notes.
-- [ ] 2. Enumerate Codex hook events on THIS machine (codex-cli 0.147.0): official hooks docs (developers.openai.com/codex/hooks), confirm a pre-tool event exists, dump its payload (write a logging hook, run a toy session).
-- [ ] 3. Mutation-path coverage test: does the pre-tool event fire for (a) apply_patch, (b) shell commands that edit files, (c) MCP tools? Record which paths are blind → decides if FS-watch fallback is v1 or v2.
-- [ ] 4. Session JSONL: confirm ~/.codex/sessions format has turn ids + prompt text usable as snapshot labels.
+- [x] 2. DONE (2026-10-15, binary strings on codex-cli 0.147.0): full event enum recovered — PreToolUse, PermissionRequest, PostToolUse, PreCompact, PostCompact, SessionStart, SessionEnd, UserPromptSubmit, SubagentStart, SubagentStop, Stop. Payload fields: session_id, turn_id, agent_type, transcript_path, cwd, hook_event_name, model, permission_mode, tool_name, tool_input, tool_use_id (+tool_response on PostToolUse). Decisions: approve/block/allow/deny, exit code 2 = block w/ stderr reason, updatedInput/updatedPermissions/additionalContext. hooks.json format = Claude Code-style (verified via ponytail plugin: hooks/claude-codex-hooks.json). `hooks` feature flag: stable+true.
+  - KEY FINDING: `undo` feature flag marked "removed" (confirmed gone), BUT `ghost_snapshot` infra still in binary (GhostSnapshotToml config, rollout-line format w/ legacy handling). Dormant in current sessions (no ghost lines in 0.144 rollouts, no git refs left in repos). Two readings: (a) OpenAI may rebuild /undo on it = durability risk; (b) if it reactivates, rewind could piggyback. Monitor releases.
+- [ ] 3. Mutation-path coverage test (LIVE test still needed): does PreToolUse fire for (a) apply_patch, (b) shell commands that edit files, (c) MCP tools? Use sandboxed CODEX_HOME + logging hook + one tiny `codex exec` run. Blind paths → FS-watch fallback decision.
+- [x] 4. DONE: rollout JSONL verified — session_meta (cwd, session_id, cli_version), turn_id present on records, event types catalogued. Snapshot labeling data exists.
 - [ ] 5. Read Gemini CLI checkpointing source (google-gemini/gemini-cli) — reuse the shadow-git design decisions.
 - [ ] 6. Read ALL comments on #9203 + #11626 — list concrete user asks, decide v1 cut.
 
