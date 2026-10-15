@@ -1,0 +1,35 @@
+{
+  "name": "rewindex",
+  "version": "0.1.0",
+  "description": "git-free /undo for OpenAI Codex CLI — automatic shadow-git snapshots before every file-mutating tool call, restore with one command. Never touches your project's git history.",
+  "keywords": [
+    "codex",
+    "codex-cli",
+    "undo",
+    "rewind",
+    "checkpoint",
+    "snapshot",
+    "hooks"
+  ],
+  "license": "MIT",
+  "type": "commonjs",
+  "bin": {
+    "rewindex": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "selfcheck": "node selfcheck.js",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}
