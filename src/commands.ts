@@ -27,6 +27,8 @@ function relativeTime(ms: number): string {
   return `${Math.round(h / 24)} gün önce`;
 }
 
+const OUTPUT_WIDTH = 88;
+
 export async function listCommand(projectRoot: string): Promise<number> {
   const g = git(projectRoot);
   const checkpoints = await listPromptCheckpoints(g);
@@ -36,28 +38,70 @@ export async function listCommand(projectRoot: string): Promise<number> {
   }
   console.log("Son 50 değişiklik\n");
   for (const [index, checkpoint] of checkpoints.entries()) {
-    const title = truncate(checkpoint.meta.prompt || checkpoint.label, 48);
-    const line = `${index + 1}. ${checkpoint.id} · ${checkpoint.filesChanged} dosya · ${title}`;
-    console.log(`${line.padEnd(78)} ${relativeTime(checkpoint.unixTime)}`);
-    console.log(`   Özet: ${summary(checkpoint)}`);
+    const groups = changeGroups(checkpoint);
+    console.log(alignRight(`${index + 1}. ${checkpoint.id}`, relativeTime(checkpoint.unixTime)));
+    console.log(alignRight(
+      "",
+      `${groups.changed.length} değişen · ${groups.added.length} eklenen · ${groups.deleted.length} silinen`,
+    ));
+    printWrapped("   Prompt: ", checkpoint.meta.prompt || checkpoint.label, 2);
+    printWrapped("   Özet: ", summary(groups));
     if (index + 1 < checkpoints.length) console.log("");
   }
   return 0;
 }
 
-function summary(checkpoint: PromptCheckpoint): string {
-  const removed = checkpoint.changes.filter((change) => change.status === "A").length;
-  const recreated = checkpoint.changes.filter((change) => change.status === "D").length;
-  const restored = checkpoint.changes.length - removed - recreated;
-  const parts: string[] = [];
-  if (removed) parts.push(`${removed} dosya silinir`);
-  if (restored) parts.push(`${restored} dosya geri alınır`);
-  if (recreated) parts.push(`${recreated} dosya yeniden oluşturulur`);
-  return `${parts.join(", ")}.`;
+function changeGroups(checkpoint: PromptCheckpoint) {
+  return {
+    added: checkpoint.changes.filter((change) => change.status === "A").map((change) => change.path),
+    deleted: checkpoint.changes.filter((change) => change.status === "D").map((change) => change.path),
+    changed: checkpoint.changes.filter((change) => !["A", "D"].includes(change.status)).map((change) => change.path),
+  };
 }
 
-function truncate(s: string, n: number): string {
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+function summary(groups: ReturnType<typeof changeGroups>): string {
+  const parts: string[] = [];
+  if (groups.changed.length) parts.push(`${pathList(groups.changed)} önceki haline döner`);
+  if (groups.added.length) parts.push(`${pathList(groups.added)} kaldırılır`);
+  if (groups.deleted.length) parts.push(`${pathList(groups.deleted)} yeniden oluşturulur`);
+  return `${parts.join("; ")}.`;
+}
+
+function pathList(paths: string[]): string {
+  const shown = paths.slice(0, 3);
+  const names = shown.length === 1
+    ? shown[0]
+    : `${shown.slice(0, -1).join(", ")} ve ${shown.at(-1)}`;
+  return paths.length > shown.length ? `${names} ve ${paths.length - shown.length} dosya daha` : names;
+}
+
+function alignRight(left: string, right: string): string {
+  return `${left}${" ".repeat(Math.max(1, OUTPUT_WIDTH - left.length - right.length))}${right}`;
+}
+
+function printWrapped(prefix: string, text: string, maxLines = Number.POSITIVE_INFINITY): void {
+  const lines = wrap(text, OUTPUT_WIDTH - prefix.length, maxLines);
+  for (const [index, line] of lines.entries()) {
+    console.log(`${index === 0 ? prefix : " ".repeat(prefix.length)}${line}`);
+  }
+}
+
+function wrap(text: string, width: number, maxLines: number): string[] {
+  let remaining = text.replace(/\s+/g, " ").trim();
+  const lines: string[] = [];
+  while (remaining && lines.length < maxLines) {
+    if (remaining.length <= width) {
+      lines.push(remaining);
+      remaining = "";
+      break;
+    }
+    const space = remaining.lastIndexOf(" ", width);
+    const cut = space > 0 ? space : width;
+    lines.push(remaining.slice(0, cut));
+    remaining = remaining.slice(cut).trim();
+  }
+  if (remaining) lines[lines.length - 1] = `${lines.at(-1)!.slice(0, width - 1)}…`;
+  return lines;
 }
 
 export async function diffCommand(projectRoot: string, id: string): Promise<number> {

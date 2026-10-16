@@ -115,7 +115,7 @@ function projectGitHead() {
   // 5) list shows snapshots
   const list = cli(["list", "-C", proj]);
   assert.strictEqual(list.status, 0, "list exits 0");
-  assert.ok(/^1\. [0-9a-f]{10} · \d+ dosya ·/m.test(list.stdout), "list numbers prompt history");
+  assert.ok(/^1\. [0-9a-f]{10}\s+\d+ (?:sn|dk|sa|gün) önce$/m.test(list.stdout), "list numbers prompt history");
   assert.ok(/add a greeting module/.test(list.stdout), "list shows the prompt title");
   ok("list shows numbered prompt history with file counts");
 

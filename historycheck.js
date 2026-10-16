@@ -54,7 +54,7 @@ try {
 
   hook(
     project,
-    "Eski dosyayı kaldır, ana dosyayı güncelle ve bu değişikliklerin geri alınabildiğini doğrulamak için açıklayıcı bir test akışı oluştur",
+    "Eski dosyayı kaldır, ana dosyayı güncelle ve bu değişikliklerin geri alınabildiğini doğrulamak için açıklayıcı, ayrıntılı ve uzun bir test akışı oluştur",
     "turn-c",
   );
   fs.writeFileSync(path.join(project, "main.txt"), "after C\n");
@@ -79,7 +79,7 @@ try {
   assert.match(firstLines[4], /^   Özet: main\.txt önceki haline döner; old\.txt yeniden oluşturulur\.$/);
   assert.match(
     list.stdout,
-    /Özet: main\.txt önceki haline döner; a\.txt ve b\.txt kaldırılır;\s+old\.txt yeniden oluşturulur\./,
+    /Özet: main\.txt önceki haline döner; a\.txt ve b\.txt kaldırılır; old\.txt yeniden\s+oluşturulur\./,
   );
   ok("list wraps prompts, explains file actions, and right-aligns metadata");
 
@@ -125,7 +125,8 @@ try {
   const directList = cli(directProject, "list");
   fs.chmodSync(directStore, 0o755);
   assert.strictEqual(directList.status, 0, directList.stderr);
-  assert.match(directList.stdout, /^1\. [0-9a-f]{10} · 1 dosya · Yeni dosya oluştur/m);
+  assert.match(directList.stdout, /^1\. [0-9a-f]{10}\s+\d+ (?:sn|dk|sa|gün) önce$/m);
+  assert.match(directList.stdout, /^   Prompt: Yeni dosya oluştur$/m);
   const directRestore = cli(directProject, "restore", "1", "-y");
   assert.strictEqual(directRestore.status, 0, directRestore.stderr);
   assert.ok(!fs.existsSync(path.join(directProject, "later.txt")));
@@ -143,8 +144,8 @@ try {
   const capped = cli(cappedProject, "list");
   const rows = capped.stdout.match(/^\d+\. /gm) || [];
   assert.strictEqual(rows.length, 50, capped.stdout);
-  assert.match(capped.stdout, /^1\. [0-9a-f]{10} · 1 dosya · change 51/m);
-  assert.doesNotMatch(capped.stdout, /· change 1\s/);
+  assert.match(capped.stdout, /^   Prompt: change 51$/m);
+  assert.doesNotMatch(capped.stdout, /^   Prompt: change 1$/m);
   ok("list is capped at the newest 50 meaningful prompts");
 
   console.log(`HISTORY-CHECK PASSED (${passed} scenarios)`);
