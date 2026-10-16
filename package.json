@@ -12,6 +12,17 @@
     "hooks"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zenonix-studio/rewindex.git"
+  },
+  "homepage": "https://github.com/zenonix-studio/rewindex#readme",
+  "bugs": {
+    "url": "https://github.com/zenonix-studio/rewindex/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "commonjs",
   "bin": {
     "rewindex": "dist/cli.js"
