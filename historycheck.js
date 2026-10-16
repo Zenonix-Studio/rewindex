@@ -52,7 +52,11 @@ try {
   fs.writeFileSync(path.join(project, "main.txt"), "after B\n");
   fs.writeFileSync(path.join(project, "b.txt"), "B\n");
 
-  hook(project, "Eski dosyayı kaldır", "turn-c");
+  hook(
+    project,
+    "Eski dosyayı kaldır, ana dosyayı güncelle ve bu değişikliklerin geri alınabildiğini doğrulamak için açıklayıcı bir test akışı oluştur",
+    "turn-c",
+  );
   fs.writeFileSync(path.join(project, "main.txt"), "after C\n");
   fs.unlinkSync(path.join(project, "old.txt"));
 
@@ -61,12 +65,23 @@ try {
   const list = cli(project, "list");
   assert.strictEqual(list.status, 0, list.stderr);
   assert.match(list.stdout, /^Son 50 değişiklik/m);
-  assert.match(list.stdout, /^1\. [0-9a-f]{10} · 2 dosya · Eski dosyayı kaldır/m);
-  assert.match(list.stdout, /^2\. [0-9a-f]{10} · 3 dosya · B dosyasını ekle/m);
-  assert.match(list.stdout, /^3\. [0-9a-f]{10} · 4 dosya · A dosyasını ekle/m);
+  assert.match(list.stdout, /^1\. [0-9a-f]{10}\s+\d+ (?:sn|dk|sa|gün) önce$/m);
+  assert.match(list.stdout, /^2\. [0-9a-f]{10}\s+\d+ (?:sn|dk|sa|gün) önce$/m);
+  assert.match(list.stdout, /^3\. [0-9a-f]{10}\s+\d+ (?:sn|dk|sa|gün) önce$/m);
   assert.doesNotMatch(list.stdout, /\$rewindex list/);
-  assert.match(list.stdout, /Özet: 2 dosya silinir, 1 dosya geri alınır, 1 dosya yeniden oluşturulur\./);
-  ok("list shows numbered cumulative prompt history and hides management prompts");
+  const firstItem = list.stdout.split("\n").findIndex((line) => /^1\. /.test(line));
+  const firstLines = list.stdout.split("\n").slice(firstItem, firstItem + 6);
+  assert.strictEqual(firstLines[0].length, 88, firstLines[0]);
+  assert.strictEqual(firstLines[1].length, 88, firstLines[1]);
+  assert.match(firstLines[1], /1 değişen · 0 eklenen · 1 silinen$/);
+  assert.match(firstLines[2], /^   Prompt: Eski dosyayı kaldır/);
+  assert.match(firstLines[3], /^           .*…$/);
+  assert.match(firstLines[4], /^   Özet: main\.txt önceki haline döner; old\.txt yeniden oluşturulur\.$/);
+  assert.match(
+    list.stdout,
+    /Özet: main\.txt önceki haline döner; a\.txt ve b\.txt kaldırılır;\s+old\.txt yeniden oluşturulur\./,
+  );
+  ok("list wraps prompts, explains file actions, and right-aligns metadata");
 
   const oldestId = list.stdout.match(/^3\. ([0-9a-f]{10})/m)?.[1];
   assert.ok(oldestId, list.stdout);
