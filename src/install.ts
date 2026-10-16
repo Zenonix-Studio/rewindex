@@ -115,6 +115,8 @@ Interpret the text after \`$rewindex\` as exactly one command:
 - \`$rewindex restore <number|id>\`: validate the selector, run the diff command first, show its output, and ask for explicit confirmation. Only after the user confirms, run \`${cli} restore "<number|id>" -y -C "$PWD"\`.
 - \`$rewindex undo\`: ask for explicit confirmation. Only after the user confirms, run \`${cli} restore --undo -y -C "$PWD"\`.
 
+Restore and undo write a safety snapshot to the rewindex state directory (\`~/.rewindex\` by default), which may be outside the writable workspace. For their final command, request sandbox escalation with a justification limited to writing that safety snapshot and state. If escalation is unavailable or denied, do not retry or bypass the sandbox; leave files unchanged and tell the user to run the command directly in their terminal or restart Codex with \`--add-dir "$HOME/.rewindex"\`.
+
 A selector is valid only when it is a decimal number from \`1\` through \`50\`, hexadecimal, or exactly \`latest\` or \`last\`. Never pass other user input to the shell, infer a selector, or add user-supplied flags. For missing or unsupported arguments, show the four forms above and make no changes.
 `;
 }

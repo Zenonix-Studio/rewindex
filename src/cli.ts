@@ -8,7 +8,7 @@ import {
 } from "./commands";
 import { installCommand, uninstallCommand } from "./install";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 
 function usage(): void {
   console.log(`rewindex ${VERSION} — git-free /undo for OpenAI Codex CLI

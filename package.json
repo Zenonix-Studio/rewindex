@@ -1,6 +1,6 @@
 {
   "name": "rewindex",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "git-free /undo for OpenAI Codex CLI — automatic shadow-git snapshots before every file-mutating tool call, restore with one command. Never touches your project's git history.",
   "keywords": [
     "codex",

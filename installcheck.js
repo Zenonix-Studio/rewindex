@@ -46,6 +46,12 @@ try {
   assert.match(skill, /number from `1` through `50`/i);
   assert.match(skill, /explicit confirmation/i);
   assert.match(skill, /restore.+-y/is);
+  assert.match(
+    skill,
+    /request sandbox escalation/i,
+    "restore and undo must request permission to write rewindex state outside the workspace",
+  );
+  assert.match(skill, /rewindex state directory.+~\/\.rewindex/is);
   ok("install creates a self-contained rewindex skill");
 
   const reinstall = run(home, "install");
