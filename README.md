@@ -27,10 +27,10 @@ $rewindex undo
 `list` shows the newest 50 prompt checkpoints:
 
 ```text
-1. dcdf6bb9f1                                          3 dk önce
-                                1 değişen · 0 eklenen · 0 silinen
-   Prompt: README dosyasını yeni kurulum adımlarıyla güncelle.
-   Özet: README.md önceki haline döner.
+1. dcdf6bb9f1                                      3 min ago
+                              1 modified · 0 added · 0 deleted
+   Prompt: Update the README with the new installation steps.
+   Summary: README.md returns to its previous state.
 ```
 
 The visible number is a convenient selector for the current list. The hash is a stable selector that remains valid if newer prompts change the numbering.
